@@ -9,32 +9,36 @@ export async function getInterviewerResponse(
   instructions: string,
   intervieweeName: string,
   history: ChatMessage[],
-  isFirst: boolean
+  questionCount: number,
+  maxQuestions = 99, // unused — AI decides
 ): Promise<string> {
-  const systemPrompt = `You are an expert AI interviewer conducting a one-on-one interview.
+  const isFirst = history.length === 0;
+
+  const systemPrompt = `You are a warm, skilled AI interviewer. Your job is to have a real conversation — not run a survey.
 
 Interview goal: ${goal}
+${instructions ? `Additional context: ${instructions}` : ''}
+You are interviewing: ${intervieweeName}
 
-Additional instructions: ${instructions}
+RULES:
+- Ask ONE question at a time, never multiple
+- Keep questions short and conversational
+- Adapt based on answers — go deeper when interesting, skip what's irrelevant
+- Prefer questions with brief answers when possible
+- Make the person feel heard, not interrogated
 
-The person you're interviewing is: ${intervieweeName}
+WHEN TO WRAP UP:
+- When you've genuinely understood what the goal asks for
+- Usually after 5–10 exchanges — use your judgment based on richness, not a fixed count
+- When you have enough, thank ${intervieweeName} warmly and specifically, summarize what you heard in 1–2 sentences, then end with exactly: INTERVIEW_COMPLETE
 
-CORE RULES:
-- Ask ONE question at a time — never multiple questions in a single message
-- Adapt based on their answers: go deeper where it's interesting, skip what's irrelevant
-- Prefer questions that can be answered briefly (Yes/No, a choice, a short sentence)
-- If they give a vague answer, ask a focused follow-up to clarify
-- Keep the conversation natural and warm — not clinical or robotic
-- After 8–12 exchanges (when you have enough rich information), wrap up gracefully
-- When wrapping up, thank them and say the interview is complete with the exact phrase: "INTERVIEW_COMPLETE"
-
-${isFirst ? `Start by greeting ${intervieweeName} warmly and asking your first focused question.` : ''}`;
+${isFirst ? `Start: greet ${intervieweeName} by name, say it'll be a short conversation (~5 min), then ask your first question.` : ''}`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 512,
+    model: 'claude-haiku-4-5',
+    max_tokens: 400,
     system: systemPrompt,
-    messages: history,
+    messages: history.length ? history : [{ role: 'user', content: '__START__' }],
   });
 
   return response.content[0].type === 'text' ? response.content[0].text : '';
@@ -46,38 +50,47 @@ export async function generateSummary(
 ): Promise<string> {
   if (allMessages.length === 0) return 'No hay respuestas todavía.';
 
-  // Group by participant
   const byParticipant: Record<string, typeof allMessages> = {};
   for (const m of allMessages) {
-    const key = `${m.name} (${m.email})`;
+    const key = `${m.name} <${m.email}>`;
     if (!byParticipant[key]) byParticipant[key] = [];
     byParticipant[key].push(m);
   }
 
   const transcripts = Object.entries(byParticipant)
     .map(([person, msgs]) => {
-      const lines = msgs.map(m => `${m.role === 'user' ? person.split(' ')[0] : 'AI'}: ${m.content}`).join('\n');
-      return `=== ${person} ===\n${lines}`;
-    })
-    .join('\n\n');
+      const firstName = person.split(' ')[0];
+      const lines = msgs
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => `${m.role === 'user' ? firstName : 'AI'}: ${m.content}`)
+        .join('\n');
+      return `### ${person}\n${lines}`;
+    }).join('\n\n');
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-haiku-4-5',
     max_tokens: 1500,
     messages: [{
       role: 'user',
-      content: `You analyzed interview transcripts. The goal was: "${goal}"
+      content: `Analyze these interview transcripts. Goal: "${goal}"
 
-TRANSCRIPTS:
 ${transcripts}
 
-Generate a structured summary in markdown with:
-1. **Key Themes** — patterns that appeared across multiple people
-2. **Notable Insights** — surprising or especially rich individual responses worth highlighting
-3. **Recommendations** — concrete actions based on what you learned
-4. **Individual Highlights** — one sentence per participant capturing their most important point
+Write a structured summary in markdown:
 
-Be specific. Use quotes where impactful. Keep it scannable.`
+## Key Themes
+Patterns across multiple people (with names).
+
+## Standout Insights
+Surprising or rich individual responses — quote directly when powerful.
+
+## Recommended Actions
+3-5 concrete next steps based on what you learned.
+
+## Per-Person Highlights
+One sentence per participant with their most important point.
+
+Be specific and direct. No filler.`
     }],
   });
 

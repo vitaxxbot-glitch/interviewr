@@ -6,7 +6,6 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'db.sqlite');
-
 let _db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
@@ -25,9 +24,9 @@ function migrate(db: Database.Database) {
       title TEXT NOT NULL,
       goal TEXT NOT NULL,
       instructions TEXT NOT NULL,
+      max_questions INTEGER NOT NULL DEFAULT 8,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
-
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       interview_id TEXT NOT NULL REFERENCES interviews(id),
@@ -35,10 +34,8 @@ function migrate(db: Database.Database) {
       email TEXT NOT NULL,
       completed INTEGER NOT NULL DEFAULT 0,
       started_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      completed_at INTEGER,
-      FOREIGN KEY (interview_id) REFERENCES interviews(id)
+      completed_at INTEGER
     );
-
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL REFERENCES sessions(id),
@@ -47,22 +44,24 @@ function migrate(db: Database.Database) {
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
+  // Safe migrations for existing DBs
+  try { db.exec(`ALTER TABLE interviews ADD COLUMN max_questions INTEGER NOT NULL DEFAULT 8`); } catch {}
 }
 
 // --- Interviews ---
-export function createInterview(id: string, title: string, goal: string, instructions: string) {
-  const db = getDb();
-  db.prepare(`INSERT INTO interviews (id, title, goal, instructions) VALUES (?, ?, ?, ?)`).run(id, title, goal, instructions);
+export function createInterview(id: string, title: string, goal: string, instructions: string, maxQuestions: number) {
+  getDb().prepare(`INSERT INTO interviews (id, title, goal, instructions, max_questions) VALUES (?, ?, ?, ?, ?)`)
+    .run(id, title, goal, instructions, maxQuestions);
 }
 
 export function getInterview(id: string) {
   return getDb().prepare(`SELECT * FROM interviews WHERE id = ?`).get(id) as
-    { id: string; title: string; goal: string; instructions: string; created_at: number } | undefined;
+    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number } | undefined;
 }
 
 export function listInterviews() {
   return getDb().prepare(`SELECT * FROM interviews ORDER BY created_at DESC`).all() as
-    { id: string; title: string; goal: string; instructions: string; created_at: number }[];
+    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number }[];
 }
 
 // --- Sessions ---
@@ -85,9 +84,8 @@ export function getSessionsForInterview(interviewId: string) {
     FROM sessions s
     LEFT JOIN messages m ON m.session_id = s.id AND m.role = 'user'
     WHERE s.interview_id = ?
-    GROUP BY s.id
-    ORDER BY s.started_at DESC
-  `).all(interviewId) as (ReturnType<typeof getSession> & { message_count: number })[];
+    GROUP BY s.id ORDER BY s.started_at DESC
+  `).all(interviewId) as any[];
 }
 
 // --- Messages ---
@@ -103,9 +101,7 @@ export function getMessages(sessionId: string) {
 export function getAllSessionMessages(interviewId: string) {
   return getDb().prepare(`
     SELECT s.name, s.email, m.role, m.content, m.created_at
-    FROM messages m
-    JOIN sessions s ON s.id = m.session_id
-    WHERE s.interview_id = ?
-    ORDER BY s.id, m.created_at ASC
+    FROM messages m JOIN sessions s ON s.id = m.session_id
+    WHERE s.interview_id = ? ORDER BY s.id, m.created_at ASC
   `).all(interviewId) as { name: string; email: string; role: string; content: string; created_at: number }[];
 }

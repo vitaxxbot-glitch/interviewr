@@ -1,10 +1,10 @@
 'use client';
-
 import { useState, useEffect, useRef, use } from 'react';
+import dynamic from 'next/dynamic';
+const VoiceButton = dynamic(() => import('@/components/VoiceButton'), { ssr: false });
 
 interface Message { role: 'user' | 'assistant'; content: string; }
 interface Interview { id: string; title: string; goal: string; }
-
 type Params = Promise<{ id: string }>;
 
 export default function InterviewPage({ params }: { params: Params }) {
@@ -17,24 +17,23 @@ export default function InterviewPage({ params }: { params: Params }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [maxQ, setMaxQ] = useState(10);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch(`/api/interviews/${id}`)
-      .then(r => r.json())
-      .then(data => setInterview(data))
-      .catch(console.error);
+    fetch(`/api/interviews/${id}`).then(r => r.json()).then(setInterview).catch(console.error);
   }, [id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, loading]);
 
   async function startInterview(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Create session
       const res = await fetch(`/api/interviews/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,23 +41,24 @@ export default function InterviewPage({ params }: { params: Params }) {
       });
       const { sessionId: sid } = await res.json();
       setSessionId(sid);
+      setStage('chat');
 
-      // Get first message from AI
       const chatRes = await fetch(`/api/interviews/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: sid, message: null }),
       });
-      const { reply } = await chatRes.json();
-      setMessages([{ role: 'assistant', content: reply }]);
-      setStage('chat');
+      const data = await chatRes.json();
+      setMessages([{ role: 'assistant', content: data.reply }]);
+      if (data.maxQuestions) setMaxQ(data.maxQuestions);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }
 
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault();
+  async function sendMessage(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!input.trim() || !sessionId || loading) return;
 
     const userMsg = input.trim();
@@ -72,136 +72,119 @@ export default function InterviewPage({ params }: { params: Params }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, message: userMsg }),
       });
-      const { reply, isComplete } = await res.json();
-      const cleanReply = reply.replace('INTERVIEW_COMPLETE', '').trim();
-      setMessages(prev => [...prev, { role: 'assistant', content: cleanReply }]);
-      if (isComplete) setTimeout(() => setStage('done'), 1200);
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      if (data.questionCount) setQuestionCount(data.questionCount);
+      if (data.isComplete) setTimeout(() => setStage('done'), 1800);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }
 
-  if (!interview) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
-        <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+  if (!interview) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+      <Spinner />
+    </div>
+  );
+
+  // ── INTRO ─────────────────────────────────────────────────────────────────
+  if (stage === 'intro') return (
+    <main style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div className="animate-fade-up" style={{ width: '100%', maxWidth: 420 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, marginBottom: 24 }}>
+          <span>●</span> Live interview
+        </div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.02em', marginBottom: 10 }}>{interview.title}</h1>
+        <p style={{ color: 'var(--fg-2)', fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
+          A short conversation with AI — adapts to your answers. Takes about <strong style={{ color: 'var(--fg)' }}>5 minutes</strong>.
+        </p>
+
+        <form onSubmit={startInterview} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { label: 'First name', type: 'text', placeholder: 'Alex', value: name, set: setName, auto: 'autoFocus' },
+            { label: 'Email', type: 'email', placeholder: 'alex@company.com', value: email, set: setEmail },
+          ].map(f => (
+            <div key={f.label}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{f.label}</label>
+              <input
+                type={f.type} required
+                placeholder={f.placeholder}
+                value={f.value}
+                onChange={e => f.set(e.target.value)}
+                autoFocus={f.label === 'First name'}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, outline: 'none' }}
+              />
+            </div>
+          ))}
+          <button type="submit" disabled={loading} style={{
+            marginTop: 8, padding: '14px', borderRadius: 'var(--radius)', border: 'none',
+            background: loading ? 'var(--fg-3)' : 'var(--accent)', color: 'white',
+            fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+          }}>
+            {loading ? 'Starting…' : 'Begin →'}
+          </button>
+        </form>
+        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--fg-3)', marginTop: 20 }}>
+          Your answers go directly to the team — no copy-paste needed.
+        </p>
       </div>
-    );
-  }
+    </main>
+  );
 
-  // Intro screen
-  if (stage === 'intro') {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: 'var(--background)' }}>
-        <div className="w-full max-w-md">
-          <div className="mb-8">
-            <div className="text-3xl mb-4">🎙️</div>
-            <h1 className="text-2xl font-semibold tracking-tight">{interview.title}</h1>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
-              You'll have a short conversation with an AI. It adapts to your answers — no fixed questions.
-              Takes about 5–10 minutes.
-            </p>
-          </div>
+  // ── DONE ─────────────────────────────────────────────────────────────────
+  if (stage === 'done') return (
+    <main style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div className="animate-fade-up" style={{ textAlign: 'center', maxWidth: 380 }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--green-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 20px' }}>✓</div>
+        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 10 }}>Thanks, {name}!</h2>
+        <p style={{ color: 'var(--fg-2)', fontSize: 15, lineHeight: 1.6 }}>
+          Your interview is complete. Responses sent directly to the team — no action needed on your end.
+        </p>
+      </div>
+    </main>
+  );
 
-          <form onSubmit={startInterview} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Your name</label>
-              <input
-                type="text" required
-                placeholder="Alex"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
-                style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
-              <input
-                type="email" required
-                placeholder="alex@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
-                style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-              />
-            </div>
-            <button
-              type="submit" disabled={loading}
-              className="w-full py-3 rounded-xl text-sm font-medium text-white mt-2"
-              style={{ background: loading ? 'var(--muted)' : 'var(--accent)', cursor: loading ? 'not-allowed' : 'pointer' }}
-            >
-              {loading ? 'Starting…' : 'Start interview →'}
-            </button>
-          </form>
+  // ── CHAT ─────────────────────────────────────────────────────────────────
+  const progress = Math.min((questionCount / maxQ) * 100, 95);
 
-          <p className="text-xs text-center mt-6" style={{ color: 'var(--muted)' }}>
-            Your responses are anonymous and used only for this research.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  // Done screen
-  if (stage === 'done') {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: 'var(--background)' }}>
-        <div className="w-full max-w-md text-center">
-          <div className="text-5xl mb-6">✓</div>
-          <h2 className="text-2xl font-semibold mb-3">Thank you, {name}!</h2>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
-            Your interview is complete. Your answers have been recorded and will help shape better decisions.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  // Chat screen
   return (
-    <main className="h-screen flex flex-col" style={{ background: 'var(--background)' }}>
+    <main style={{ height: '100svh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       {/* Header */}
-      <header className="border-b px-6 py-4 shrink-0" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ background: 'var(--accent)', color: 'white' }}>AI</div>
-          <div>
-            <p className="text-sm font-medium">{interview.title}</p>
-            <p className="text-xs" style={{ color: 'var(--muted)' }}>Interviewing {name}</p>
+      <header style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)', padding: '10px 20px', flexShrink: 0 }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{interview.title}</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>In progress…</span>
+          </div>
+          <div style={{ height: 3, background: 'var(--bg-2)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 99, background: 'var(--accent)', width: `${Math.max(progress, 4)}%`, transition: 'width 0.6s ease' }} />
           </div>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className="max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed"
-                style={{
-                  background: msg.role === 'user' ? 'var(--accent)' : 'var(--card)',
-                  color: msg.role === 'user' ? 'white' : 'var(--foreground)',
-                  border: msg.role === 'assistant' ? `1px solid var(--border)` : 'none',
-                  borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                }}
-              >
+            <div key={i} className="animate-fade-up" style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{
+                maxWidth: '82%', padding: '11px 16px', fontSize: 14, lineHeight: 1.6,
+                borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
+                background: msg.role === 'user' ? 'var(--accent)' : 'var(--card)',
+                color: msg.role === 'user' ? 'white' : 'var(--fg)',
+                border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none',
+              }}>
                 {msg.content}
               </div>
             </div>
           ))}
-
           {loading && (
-            <div className="flex justify-start">
-              <div className="px-4 py-3 rounded-2xl text-sm flex gap-1 items-center"
-                style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px 18px 18px 4px' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--muted)', animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--muted)', animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--muted)', animationDelay: '300ms' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ padding: '12px 16px', borderRadius: '4px 18px 18px 18px', background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', gap: 5, alignItems: 'center' }}>
+                <span className="dot-1" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-3)', display: 'block' }} />
+                <span className="dot-2" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-3)', display: 'block' }} />
+                <span className="dot-3" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-3)', display: 'block' }} />
               </div>
             </div>
           )}
@@ -209,32 +192,41 @@ export default function InterviewPage({ params }: { params: Params }) {
         </div>
       </div>
 
-      {/* Input */}
-      <div className="border-t px-6 py-4 shrink-0" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
-        <form onSubmit={sendMessage} className="max-w-2xl mx-auto flex gap-3">
+      {/* Input + voice */}
+      <div style={{ borderTop: '1px solid var(--border)', background: 'var(--card)', padding: '12px 16px', flexShrink: 0 }}>
+        <form onSubmit={sendMessage} style={{ maxWidth: 640, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <VoiceButton onTranscript={t => setInput(i => i ? i + ' ' + t : t)} />
+
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={loading}
-            placeholder="Type your answer…"
-            className="flex-1 px-4 py-3 rounded-xl border text-sm outline-none"
-            style={{ background: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="px-5 py-3 rounded-xl text-sm font-medium text-white transition-all"
+            placeholder="Type or speak your answer…"
             style={{
-              background: (loading || !input.trim()) ? 'var(--muted)' : 'var(--accent)',
-              cursor: (loading || !input.trim()) ? 'not-allowed' : 'pointer',
+              flex: 1, padding: '11px 16px', borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)', background: 'var(--bg)',
+              color: 'var(--fg)', fontSize: 14, outline: 'none',
             }}
-          >
+          />
+          <button type="submit" disabled={loading || !input.trim()} style={{
+            padding: '11px 20px', borderRadius: 'var(--radius)', border: 'none', flexShrink: 0,
+            background: (loading || !input.trim()) ? 'var(--fg-3)' : 'var(--accent)',
+            color: 'white', fontSize: 14, fontWeight: 600,
+            cursor: (loading || !input.trim()) ? 'not-allowed' : 'pointer',
+          }}>
             Send
           </button>
         </form>
       </div>
     </main>
   );
+}
+
+function Spinner() {
+  return <>
+    <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--accent)', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+  </>;
 }

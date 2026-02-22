@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   description: 'Replace static surveys with adaptive AI conversations',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
