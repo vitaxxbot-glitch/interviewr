@@ -1,9 +1,19 @@
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  maxRetries: 4, // auto-retries 529 overload + 529 with exponential backoff
+  maxRetries: 2,
 });
+
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
+
+function isOverloaded(e: unknown): boolean {
+  const err = e as { status?: number; message?: string };
+  return err?.status === 529 || String(err?.message ?? '').includes('overloaded');
+}
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -50,14 +60,31 @@ WHEN TO WRAP UP:
 
 ${isFirst ? `Opening: greet ${intervieweeName} by name in one short sentence, then immediately ask your first question. Keep the whole opening under 20 words.` : ''}`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 400,
-    system: systemPrompt,
-    messages: history.length ? history : [{ role: 'user', content: '__START__' }],
-  });
+  const messages = history.length ? history : [{ role: 'user' as const, content: '__START__' }];
 
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 400,
+      system: systemPrompt,
+      messages,
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  } catch (e) {
+    if (isOverloaded(e) && openai) {
+      console.log('Anthropic overloaded — falling back to OpenAI');
+      const res = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 400,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ],
+      });
+      return res.choices[0].message.content ?? '';
+    }
+    throw e;
+  }
 }
 
 export async function generateSummary(
@@ -83,12 +110,7 @@ export async function generateSummary(
       return `### ${person}\n${lines}`;
     }).join('\n\n');
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1500,
-    messages: [{
-      role: 'user',
-      content: `Analyze these interview transcripts. Goal: "${goal}"
+  const prompt = `Analyze these interview transcripts. Goal: "${goal}"
 
 ${transcripts}
 
@@ -106,9 +128,25 @@ Surprising or rich individual responses — quote directly when powerful.
 ## Per-Person Highlights
 One sentence per participant with their most important point.
 
-Be specific and direct. No filler.`
-    }],
-  });
+Be specific and direct. No filler.`;
 
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  } catch (e) {
+    if (isOverloaded(e) && openai) {
+      console.log('Anthropic overloaded — falling back to OpenAI for summary');
+      const res = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      return res.choices[0].message.content ?? '';
+    }
+    throw e;
+  }
 }
