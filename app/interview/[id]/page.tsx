@@ -73,9 +73,16 @@ export default function InterviewPage({ params }: { params: Params }) {
         body: JSON.stringify({ sessionId, message: userMsg }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-      if (data.questionCount !== undefined) setQuestionCount(data.questionCount);
-      if (data.isComplete) setTimeout(() => setStage('done'), 2000);
+      if (data.retryable) {
+        // Restore user message so they can retry
+        setInput(userMsg);
+        setMessages(prev => prev.slice(0, -1)); // remove the user msg we added
+        setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ The AI is temporarily busy. Please try again in a moment.' }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply || data.error || 'Something went wrong.' }]);
+        if (data.questionCount !== undefined) setQuestionCount(data.questionCount);
+        if (data.isComplete) setTimeout(() => setStage('done'), 2000);
+      }
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);

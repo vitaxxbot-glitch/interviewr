@@ -42,8 +42,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       questionCount: questionCount + (isFirst ? 0 : 1),
       maxQuestions: maxQ,
     });
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e);
+    const status = (e as { status?: number })?.status;
+    if (status === 529 || String(e).includes('overloaded')) {
+      return NextResponse.json({
+        error: 'AI is temporarily overloaded. Please try again in a moment.',
+        retryable: true,
+      }, { status: 503 });
+    }
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  maxRetries: 4, // auto-retries 529 overload + 529 with exponential backoff
+});
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
