@@ -25,8 +25,7 @@ export default function Home() {
     setLoading(true);
     try {
       const res = await fetch('/api/interviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const { id } = await res.json();
@@ -51,137 +50,163 @@ export default function Home() {
     navigator.clipboard.writeText(created.link);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
+
   async function logout() {
     await fetch('/api/auth', { method: 'DELETE' });
     window.location.href = '/login';
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <main style={{ minHeight: '100svh', background: 'var(--bg)' }}>
+      {/* Header */}
+      <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '13px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>🎙️</span>
-            <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em' }}>Interviewr</span>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🎙️</div>
+            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>Interviewr</span>
           </div>
-          <button onClick={logout} style={{ fontSize: 12, color: 'var(--fg-3)', background: 'none', border: 'none', cursor: 'pointer' }}>Sign out</button>
+          <button onClick={logout} style={{ fontSize: 13, color: 'var(--fg-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+            Sign out
+          </button>
         </div>
       </header>
 
-      <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 20px' }}>
-        <section className="animate-fade-up">
-          <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 14 }}>New interview</h2>
-          <form onSubmit={handleCreate} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Name</label>
-              <input type="text" required autoFocus placeholder="e.g. Employee benefits survey"
-                value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-            </div>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 48px' }}>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600 }}>Objective</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fg-3)' }}>
-                  <span>Tap mic to speak</span>
-                  <VoiceButton
-                    size="sm"
-                    label={false}
-                    onTranscript={t => setForm(f => ({ ...f, goal: f.goal ? f.goal + ' ' + t : t }))}
-                  />
-                </div>
+        {/* Create form */}
+        <div className="animate-fade-up" style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>New interview</h1>
+
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input
+              type="text" required autoFocus
+              placeholder="Name — e.g. Employee benefits survey"
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              style={{ padding: '13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', boxShadow: 'var(--shadow-sm)' }}
+            />
+
+            <div style={{ position: 'relative' }}>
+              <textarea
+                required rows={4}
+                placeholder="Objective — what do you want to learn? Type or speak it."
+                value={form.goal}
+                onChange={e => setForm(f => ({ ...f, goal: e.target.value }))}
+                style={{ padding: '13px 50px 13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', resize: 'none', fontFamily: 'inherit', boxShadow: 'var(--shadow-sm)' }}
+              />
+              <div style={{ position: 'absolute', bottom: 10, right: 10 }}>
+                <VoiceButton size="sm" label={false} onTranscript={t => setForm(f => ({ ...f, goal: f.goal ? f.goal + ' ' + t : t }))} />
               </div>
-              <textarea required rows={4}
-                placeholder="What do you want to learn? Type or speak it."
-                value={form.goal} onChange={e => setForm(f => ({ ...f, goal: e.target.value }))}
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
 
-            <button type="submit" disabled={loading} style={{ padding: '13px', borderRadius: 'var(--radius)', border: 'none', background: loading ? 'var(--fg-3)' : 'var(--accent)', color: 'white', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? 'Creating…' : 'Create →'}
+            <button type="submit" disabled={loading} style={{
+              padding: '14px', borderRadius: 'var(--radius)', border: 'none',
+              background: loading ? 'var(--fg-3)' : 'var(--accent)', color: 'white',
+              fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+              boxShadow: loading ? 'none' : '0 2px 8px rgba(124,92,191,0.35)',
+              letterSpacing: '-0.01em',
+            }}>
+              {loading ? 'Creating…' : 'Create interview →'}
             </button>
           </form>
-        </section>
+        </div>
 
+        {/* Created link */}
         {created && (
-          <div className="animate-fade-up" style={{ marginTop: 12, padding: 16, background: 'var(--accent-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(124,92,191,0.25)' }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', marginBottom: 8 }}>✓ Ready — share this link</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <code style={{ flex: 1, fontSize: 11, padding: '7px 10px', background: 'var(--bg)', borderRadius: 8, color: 'var(--fg-2)', wordBreak: 'break-all' }}>{created.link}</code>
-              <button onClick={copyLink} style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none', background: copied ? 'var(--green)' : 'var(--accent)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                {copied ? '✓' : 'Copy'}
+          <div className="animate-fade-up" style={{ marginBottom: 32, padding: 16, background: 'var(--accent-bg)', borderRadius: 'var(--radius-lg)', border: '1.5px solid rgba(124,92,191,0.2)' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', marginBottom: 10 }}>
+              ✓ Interview created
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <code style={{ flex: 1, fontSize: 12, padding: '8px 10px', background: 'var(--card)', borderRadius: 8, color: 'var(--fg-2)', wordBreak: 'break-all', border: '1px solid var(--border)' }}>
+                {created.link}
+              </code>
+              <button onClick={copyLink} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: 'none', background: copied ? 'var(--green)' : 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {copied ? '✓ Copied' : 'Copy'}
               </button>
             </div>
-            <div style={{ marginTop: 10, display: 'flex', gap: 14 }}>
-              <Link href={`/dashboard/${created.id}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>Dashboard →</Link>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Link href={`/dashboard/${created.id}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>View dashboard →</Link>
               <Link href={`/interview/${created.id}`} target="_blank" style={{ fontSize: 13, color: 'var(--fg-2)', textDecoration: 'none' }}>Preview ↗</Link>
             </div>
           </div>
         )}
 
+        {/* Interview list */}
         {interviews.length > 0 && (
-          <section style={{ marginTop: 36 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>Interviews</h2>
+          <div>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
+              Your interviews
+            </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {interviews.map((iv, i) => (
-                <SwipeRow key={iv.id} onDelete={() => handleDelete(iv.id)} deleting={deleting === iv.id}>
-                  <div style={{ flex: 1, minWidth: 0, padding: '12px 14px' }}>
+                <SwipeRow key={iv.id} onDelete={() => handleDelete(iv.id)} deleting={deleting === iv.id} index={i}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '13px 14px' }}>
                     <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iv.title}</p>
                     <p style={{ fontSize: 12, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{iv.goal}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 14px 0 0', flexShrink: 0 }}>
-                    <Link href={`/interview/${iv.id}`} target="_blank" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none' }}>Link ↗</Link>
-                    <Link href={`/dashboard/${iv.id}`} style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--accent)', fontSize: 12, fontWeight: 600, color: 'white', textDecoration: 'none' }}>Results</Link>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 12px 0 0', flexShrink: 0 }}>
+                    <Link href={`/interview/${iv.id}`} target="_blank"
+                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none', background: 'var(--card)' }}>
+                      Share ↗
+                    </Link>
+                    <Link href={`/dashboard/${iv.id}`}
+                      style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--accent)', fontSize: 12, fontWeight: 600, color: 'white', textDecoration: 'none' }}>
+                      Results
+                    </Link>
                   </div>
                 </SwipeRow>
               ))}
             </div>
-          </section>
+          </div>
         )}
 
         {interviews.length === 0 && !created && (
-          <p style={{ textAlign: 'center', color: 'var(--fg-3)', fontSize: 13, marginTop: 40 }}>No interviews yet ↑</p>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--fg-3)' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🎙️</div>
+            <p style={{ fontSize: 14 }}>No interviews yet. Create your first one above.</p>
+          </div>
         )}
       </div>
     </main>
   );
 }
 
-// Swipe-to-delete row
-function SwipeRow({ children, onDelete, deleting }: { children: React.ReactNode; onDelete: () => void; deleting: boolean }) {
+function SwipeRow({ children, onDelete, deleting, index }: {
+  children: React.ReactNode; onDelete: () => void; deleting: boolean; index: number;
+}) {
   const [offset, setOffset] = useState(0);
-  const [confirmed, setConfirmed] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const startX = useRef(0);
-  const DELETE_THRESHOLD = 80;
+  const THRESHOLD = 72;
 
-  function onTouchStart(e: React.TouchEvent) { startX.current = e.touches[0].clientX; }
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX;
+  }
   function onTouchMove(e: React.TouchEvent) {
     const dx = startX.current - e.touches[0].clientX;
-    if (dx > 0) setOffset(Math.min(dx, DELETE_THRESHOLD + 20));
+    if (dx > 0) setOffset(Math.min(dx, THRESHOLD + 10));
   }
   function onTouchEnd() {
-    if (offset >= DELETE_THRESHOLD) { setConfirmed(true); setOffset(DELETE_THRESHOLD); }
-    else setOffset(0);
+    if (offset >= THRESHOLD * 0.7) { setRevealed(true); setOffset(THRESHOLD); }
+    else { setOffset(0); setRevealed(false); }
   }
 
   return (
-    <div style={{ position: 'relative', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+    <div className="animate-fade-up" style={{ animationDelay: `${index * 0.04}s`, position: 'relative', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
       {/* Delete bg */}
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: DELETE_THRESHOLD, background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius)' }}>
-        {confirmed ? (
-          <button onClick={() => { setOffset(0); setConfirmed(false); onDelete(); }}
-            style={{ background: 'none', border: 'none', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '8px 12px' }}>
-            {deleting ? '…' : 'Delete?'}
-          </button>
-        ) : (
-          <span style={{ fontSize: 18, pointerEvents: 'none' }}>🗑️</span>
-        )}
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: THRESHOLD, background: 'var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius)' }}>
+        <button
+          onClick={() => { setOffset(0); setRevealed(false); onDelete(); }}
+          disabled={deleting}
+          style={{ background: 'none', border: 'none', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '10px 14px' }}>
+          {deleting ? '…' : 'Delete'}
+        </button>
       </div>
-
-      {/* Content */}
+      {/* Row */}
       <div
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', transform: `translateX(-${offset}px)`, transition: offset === 0 ? 'transform 0.2s ease' : 'none', userSelect: 'none' }}>
+        style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', transform: `translateX(-${offset}px)`, transition: offset === 0 && !revealed ? 'transform 0.25s ease' : 'none', userSelect: 'none', boxShadow: 'var(--shadow-sm)' }}>
         {children}
       </div>
     </div>
