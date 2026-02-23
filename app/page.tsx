@@ -31,7 +31,7 @@ export default function Home() {
       });
       const { id } = await res.json();
       setCreated({ id, link: `${window.location.origin}/interview/${id}` });
-      setForm({ title: '', goal: '' });
+      setForm({ title: '', goal: '', maxQuestions: 8 });
     } finally { setLoading(false); }
   }
 
