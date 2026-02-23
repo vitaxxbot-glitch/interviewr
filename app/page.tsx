@@ -10,7 +10,7 @@ interface Interview { id: string; title: string; goal: string; created_at: numbe
 
 export default function Home() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [form, setForm] = useState({ title: '', goal: '', maxQuestions: 8 });
+  const [form, setForm] = useState({ title: '', goal: '', maxQuestions: 5 });
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<{ id: string; link: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -91,17 +91,6 @@ export default function Home() {
               <div style={{ position: 'absolute', bottom: 10, right: 10 }}>
                 <VoiceButton size="sm" label={false} onTranscript={t => setForm(f => ({ ...f, goal: f.goal ? f.goal + ' ' + t : t }))} />
               </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 0' }}>
-              <span style={{ fontSize: 13, color: 'var(--fg-2)', whiteSpace: 'nowrap' }}>Max questions</span>
-              <input
-                type="number" min={3} max={20}
-                value={form.maxQuestions}
-                onChange={e => setForm(f => ({ ...f, maxQuestions: Number(e.target.value) }))}
-                style={{ width: 64, padding: '8px 12px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 14, textAlign: 'center' }}
-              />
-              <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>AI may finish earlier</span>
             </div>
 
             <button type="submit" disabled={loading} style={{

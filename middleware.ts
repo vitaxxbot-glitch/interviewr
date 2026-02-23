@@ -1,12 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// These routes are public — no auth needed
+// Public routes — no auth needed (interviewees + health)
 const isPublicRoute = createRouteMatcher([
-  '/interview/:id*',
-  '/api/interviews/:id/chat',
-  '/api/interviews/:id',
-  '/api/transcribe',
-  '/api/health',
+  '/interview(.*)',
+  '/api/interviews/:id(.*)',   // all interview API calls (GET, POST, chat)
+  '/api/transcribe(.*)',
+  '/api/health(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ]);

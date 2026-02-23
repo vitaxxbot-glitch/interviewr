@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const { title, goal, instructions, maxQuestions } = await req.json();
     if (!title || !goal) return NextResponse.json({ error: 'title and goal required' }, { status: 400 });
     const id = uuidv4().slice(0, 8);
-    createInterview(id, title, goal, instructions || '', Number(maxQuestions) || 8);
+    createInterview(id, title, goal, instructions || '', Number(maxQuestions) || 5);
     return NextResponse.json({ id });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

@@ -18,12 +18,15 @@ export default function InterviewPage({ params }: { params: Params }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [questionCount, setQuestionCount] = useState(0);
-  const [maxQ, setMaxQ] = useState(10);
+  const [maxQ, setMaxQ] = useState(5);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch(`/api/interviews/${id}`).then(r => r.json()).then(setInterview).catch(console.error);
+    fetch(`/api/interviews/${id}`).then(r => r.json()).then(d => {
+      setInterview(d);
+      if (d.max_questions) setMaxQ(d.max_questions);
+    }).catch(console.error);
   }, [id]);
 
   useEffect(() => {
@@ -99,7 +102,7 @@ export default function InterviewPage({ params }: { params: Params }) {
             {interview.title}
           </h1>
           <p style={{ color: 'var(--fg-2)', fontSize: 14, lineHeight: 1.6 }}>
-            A short AI conversation — a few questions, adapts to your answers. About <strong style={{ color: 'var(--fg)' }}>5 min</strong>.
+            A short AI conversation — a few questions, adapts to your answers. About <strong style={{ color: 'var(--fg)' }}>{maxQ <= 3 ? '1–2' : maxQ <= 5 ? '2–3' : '5'} min</strong>.
           </p>
         </div>
 

@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     if (session.completed) return NextResponse.json({ error: 'Already completed' }, { status: 400 });
 
-    const maxQ = interview.max_questions || 8;
+    const maxQ = interview.max_questions || 5;
     const history = getMessages(sessionId);
     const isFirst = history.length === 0;
     const questionCount = history.filter(m => m.role === 'user').length;
@@ -64,7 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       messages,
       completed: session.completed === 1,
       questionCount: messages.filter(m => m.role === 'user').length,
-      maxQuestions: interview?.max_questions || 8,
+      maxQuestions: interview?.max_questions || 5,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
