@@ -49,7 +49,7 @@ export default function InterviewPage({ params }: { params: Params }) {
       });
       const data = await chatRes.json();
       setMessages([{ role: 'assistant', content: data.reply }]);
-      if (data.maxQuestions) setMaxQ(data.maxQuestions);
+      if (data.maxQuestions !== undefined) setMaxQ(data.maxQuestions);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -71,7 +71,7 @@ export default function InterviewPage({ params }: { params: Params }) {
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-      if (data.questionCount) setQuestionCount(data.questionCount);
+      if (data.questionCount !== undefined) setQuestionCount(data.questionCount);
       if (data.isComplete) setTimeout(() => setStage('done'), 2000);
     } finally {
       setLoading(false);

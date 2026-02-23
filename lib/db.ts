@@ -46,6 +46,11 @@ function migrate(db: Database.Database) {
   `);
   // Safe migrations for existing DBs
   try { db.exec(`ALTER TABLE interviews ADD COLUMN max_questions INTEGER NOT NULL DEFAULT 8`); } catch {}
+  try { db.exec(`ALTER TABLE interviews ADD COLUMN summary TEXT`); } catch {}
+}
+
+export function saveSummary(id: string, summary: string) {
+  getDb().prepare(`UPDATE interviews SET summary = ? WHERE id = ?`).run(summary, id);
 }
 
 // --- Interviews ---
@@ -56,7 +61,7 @@ export function createInterview(id: string, title: string, goal: string, instruc
 
 export function getInterview(id: string) {
   return getDb().prepare(`SELECT * FROM interviews WHERE id = ?`).get(id) as
-    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number } | undefined;
+    { id: string; title: string; goal: string; instructions: string; max_questions: number; summary: string | null; created_at: number } | undefined;
 }
 
 export function listInterviews() {

@@ -40,10 +40,13 @@ export default function DashboardPage({ params }: { params: Params }) {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  async function handleSummary() {
+  async function handleSummary(force = false) {
     setLoadingSummary(true);
     try {
-      await fetchData(true);
+      const url = force ? `/api/dashboard/${id}?summary=1&force=1` : `/api/dashboard/${id}?summary=1`;
+      const res = await fetch(url);
+      const d = await res.json();
+      setData(d);
     } finally {
       setLoadingSummary(false);
     }
@@ -119,9 +122,21 @@ export default function DashboardPage({ params }: { params: Params }) {
         <section className="animate-fade-up stagger-1">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--fg)' }}>AI Summary</h2>
-            {!data.summary && (
+            {data.summary ? (
               <button
-                onClick={handleSummary}
+                onClick={() => handleSummary(true)}
+                disabled={loadingSummary || completedResponses === 0}
+                style={{
+                  padding: '7px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                  background: 'var(--card)', color: 'var(--fg-2)', fontSize: 13, fontWeight: 500,
+                  cursor: loadingSummary ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {loadingSummary ? 'Regenerating…' : '↺ Regenerate'}
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSummary()}
                 disabled={loadingSummary || completedResponses === 0}
                 style={{
                   padding: '7px 16px', borderRadius: 'var(--radius)', border: 'none',
