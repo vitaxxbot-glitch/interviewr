@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/interviews/:id/chat',
   '/api/interviews/:id',
   '/api/transcribe',
+  '/api/health',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ]);
