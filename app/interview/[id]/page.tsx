@@ -51,8 +51,18 @@ export default function InterviewPage({ params }: { params: Params }) {
         body: JSON.stringify({ sessionId: sid, message: null }),
       });
       const data = await chatRes.json();
-      setMessages([{ role: 'assistant', content: data.reply }]);
-      if (data.maxQuestions !== undefined) setMaxQ(data.maxQuestions);
+      if (data.retryable || !data.reply) {
+        setStage('intro');
+        setSessionId(null);
+        alert('The AI is temporarily unavailable. Please try again in a moment.');
+      } else {
+        setMessages([{ role: 'assistant', content: data.reply }]);
+        if (data.maxQuestions !== undefined) setMaxQ(data.maxQuestions);
+      }
+    } catch {
+      setStage('intro');
+      setSessionId(null);
+      alert('Service temporarily unavailable. Please try again in a moment.');
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -83,6 +93,15 @@ export default function InterviewPage({ params }: { params: Params }) {
         if (data.questionCount !== undefined) setQuestionCount(data.questionCount);
         if (data.isComplete) setTimeout(() => setStage('done'), 2000);
       }
+    } catch {
+      setMessages(prev => {
+        // Remove last user message so they can retry
+        const last = prev[prev.length - 1];
+        if (last?.role === 'user') return prev.slice(0, -1);
+        return prev;
+      });
+      setInput(userMsg);
+      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Service temporarily unavailable. Please try again in a moment.' }]);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
