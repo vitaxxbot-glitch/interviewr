@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { UserButton } from '@clerk/nextjs';
 
 const VoiceButton = dynamic(() => import('@/components/VoiceButton'), { ssr: false });
 
@@ -51,11 +52,6 @@ export default function Home() {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
-  async function logout() {
-    await fetch('/api/auth', { method: 'DELETE' });
-    window.location.href = '/login';
-  }
-
   return (
     <main style={{ minHeight: '100svh', background: 'var(--bg)' }}>
       {/* Header */}
@@ -65,9 +61,7 @@ export default function Home() {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🎙️</div>
             <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>Interviewr</span>
           </div>
-          <button onClick={logout} style={{ fontSize: 13, color: 'var(--fg-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
-            Sign out
-          </button>
+          <UserButton afterSignOutUrl="/sign-in" />
         </div>
       </header>
 
