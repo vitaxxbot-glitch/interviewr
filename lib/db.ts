@@ -86,8 +86,14 @@ export function getInterview(id: string) {
 }
 
 export function listInterviews() {
-  return getDb().prepare(`SELECT * FROM interviews ORDER BY created_at DESC`).all() as
-    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number }[];
+  return getDb().prepare(`
+    SELECT i.*, COUNT(s.id) as response_count
+    FROM interviews i
+    LEFT JOIN sessions s ON s.interview_id = i.id AND s.completed = 1
+    GROUP BY i.id
+    ORDER BY i.created_at DESC
+  `).all() as
+    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number; response_count: number }[];
 }
 
 // --- Sessions ---

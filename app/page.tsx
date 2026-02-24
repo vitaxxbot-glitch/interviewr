@@ -5,6 +5,7 @@ import Link from 'next/link';
 interface Interview {
   id: string; title: string; goal: string; created_at: number;
   intro_message: string; success_message: string; fields: string; max_questions: number;
+  response_count: number;
 }
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Interview | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   function loadInterviews() {
     fetch('/api/interviews').then(r => r.json()).then(setInterviews).catch(console.error);
@@ -127,29 +129,49 @@ export default function Home() {
               <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
                 Your interviews
               </h2>
+              {menuOpen && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(null)} />
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {interviews.map((iv, i) => (
                   <SwipeRow key={iv.id} onDelete={() => handleDelete(iv.id)} deleting={deleting === iv.id} index={i}>
                     <div style={{ flex: 1, minWidth: 0, padding: '13px 14px' }}>
                       <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iv.title}</p>
-                      <p style={{ fontSize: 12, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{iv.goal}</p>
+                      <p style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>Responses: {iv.response_count}</p>
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 12px 0 0', flexShrink: 0 }}>
                       <Link href={`/interview/${iv.id}`} target="_blank"
                         style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none', background: 'var(--card)' }}>
                         Share ↗
                       </Link>
-                      <button
-                        onClick={() => setEditing({ ...iv, fields: iv.fields || '["name","email"]' })}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, color: 'var(--fg-2)', background: 'var(--card)', cursor: 'pointer', fontWeight: 700 }}
-                        title="Edit interview"
-                      >
-                        ···
-                      </button>
                       <Link href={`/dashboard/${iv.id}`}
                         style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--fg)', fontSize: 12, fontWeight: 600, color: 'var(--card)', textDecoration: 'none' }}>
                         Results
                       </Link>
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === iv.id ? null : iv.id); }}
+                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, color: 'var(--fg-2)', background: 'var(--card)', cursor: 'pointer', fontWeight: 700, lineHeight: 1 }}
+                        >
+                          ···
+                        </button>
+                        {menuOpen === iv.id && (
+                          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 140, overflow: 'hidden' }}>
+                            <button
+                              onClick={() => { setMenuOpen(null); setEditing({ ...iv, fields: iv.fields || '["name","email"]' }); }}
+                              style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', textAlign: 'left', fontSize: 13, cursor: 'pointer', color: 'var(--fg)' }}
+                            >
+                              Customize
+                            </button>
+                            <button
+                              onClick={() => { setMenuOpen(null); handleDelete(iv.id); }}
+                              style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'none', textAlign: 'left', fontSize: 13, cursor: 'pointer', color: 'var(--red)' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </SwipeRow>
                 ))}
