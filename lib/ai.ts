@@ -34,6 +34,7 @@ You are interviewing: ${intervieweeName}
 Max questions: ${maxQuestions}
 
 RULES — follow strictly:
+- LANGUAGE: always respond in the same language as the interview goal. If the goal is in Spanish, respond in Spanish. If in English, respond in English. Never mix languages.
 - ONE question per message, never two
 - KEEP IT SHORT: each question must be 12 words or fewer. Be direct.
 - Sound human and warm, not formal or corporate
@@ -95,6 +96,7 @@ export async function generateSuggestions(
 The interviewer just asked: "${question}"
 
 Generate 3 very short suggested answers a participant might give (max 5 words each).
+Write the suggestions in the same language as the interview goal.
 Return ONLY the 3 answers, one per line, no numbering, no bullets, no extra text.`;
   try {
     const response = await anthropic.messages.create({
