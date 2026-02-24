@@ -346,9 +346,9 @@ export default function DashboardPage({ params }: { params: Params }) {
         )}
       </div>
 
-      <footer style={{ textAlign: 'center', padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--card)', fontSize: 12, color: 'var(--fg-3)' }}>
+      <footer style={{ textAlign: 'center', padding: '16px 20px', background: 'var(--card)', fontSize: 14, color: 'var(--fg-3)' }}>
         <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--fg-3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 14, filter: 'invert(1) brightness(0.4)' }} />
+          Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 16, filter: 'invert(1) brightness(0.4)' }} />
         </a>
       </footer>
     </main>
