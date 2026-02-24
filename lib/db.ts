@@ -31,7 +31,7 @@ function migrate(db: Database.Database) {
       id TEXT PRIMARY KEY,
       interview_id TEXT NOT NULL REFERENCES interviews(id),
       name TEXT NOT NULL,
-      email TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
       completed INTEGER NOT NULL DEFAULT 0,
       started_at INTEGER NOT NULL DEFAULT (unixepoch()),
       completed_at INTEGER
@@ -47,10 +47,31 @@ function migrate(db: Database.Database) {
   // Safe migrations for existing DBs
   try { db.exec(`ALTER TABLE interviews ADD COLUMN max_questions INTEGER NOT NULL DEFAULT 8`); } catch {}
   try { db.exec(`ALTER TABLE interviews ADD COLUMN summary TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE interviews ADD COLUMN intro_message TEXT NOT NULL DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE interviews ADD COLUMN success_message TEXT NOT NULL DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE interviews ADD COLUMN fields TEXT NOT NULL DEFAULT '["name","email"]'`); } catch {}
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN phone TEXT NOT NULL DEFAULT ''`); } catch {}
 }
 
 export function saveSummary(id: string, summary: string) {
   getDb().prepare(`UPDATE interviews SET summary = ? WHERE id = ?`).run(summary, id);
+}
+
+export function updateInterview(id: string, fields: {
+  title?: string; goal?: string; intro_message?: string;
+  success_message?: string; fields?: string; max_questions?: number;
+}) {
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (fields.title !== undefined) { sets.push('title = ?'); vals.push(fields.title); }
+  if (fields.goal !== undefined) { sets.push('goal = ?'); vals.push(fields.goal); }
+  if (fields.intro_message !== undefined) { sets.push('intro_message = ?'); vals.push(fields.intro_message); }
+  if (fields.success_message !== undefined) { sets.push('success_message = ?'); vals.push(fields.success_message); }
+  if (fields.fields !== undefined) { sets.push('fields = ?'); vals.push(fields.fields); }
+  if (fields.max_questions !== undefined) { sets.push('max_questions = ?'); vals.push(fields.max_questions); }
+  if (sets.length === 0) return;
+  vals.push(id);
+  getDb().prepare(`UPDATE interviews SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
 }
 
 // --- Interviews ---
@@ -65,13 +86,20 @@ export function getInterview(id: string) {
 }
 
 export function listInterviews() {
-  return getDb().prepare(`SELECT * FROM interviews ORDER BY created_at DESC`).all() as
-    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number }[];
+  return getDb().prepare(`
+    SELECT i.*, COUNT(s.id) as response_count
+    FROM interviews i
+    LEFT JOIN sessions s ON s.interview_id = i.id AND s.completed = 1
+    GROUP BY i.id
+    ORDER BY i.created_at DESC
+  `).all() as
+    { id: string; title: string; goal: string; instructions: string; max_questions: number; created_at: number; response_count: number }[];
 }
 
 // --- Sessions ---
-export function createSession(id: string, interviewId: string, name: string, email: string) {
-  getDb().prepare(`INSERT INTO sessions (id, interview_id, name, email) VALUES (?, ?, ?, ?)`).run(id, interviewId, name, email);
+export function createSession(id: string, interviewId: string, name: string, email: string, phone = '') {
+  getDb().prepare(`INSERT INTO sessions (id, interview_id, name, email, phone) VALUES (?, ?, ?, ?, ?)`)
+    .run(id, interviewId, name, email, phone);
 }
 
 export function getSession(id: string) {

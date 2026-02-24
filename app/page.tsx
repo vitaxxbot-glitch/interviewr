@@ -1,37 +1,38 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { UserButton } from '@clerk/nextjs';
 
-const VoiceButton = dynamic(() => import('@/components/VoiceButton'), { ssr: false });
-
-interface Interview { id: string; title: string; goal: string; created_at: number; }
+interface Interview {
+  id: string; title: string; goal: string; created_at: number;
+  intro_message: string; success_message: string; fields: string; max_questions: number;
+  response_count: number;
+}
 
 export default function Home() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [form, setForm] = useState({ title: '', goal: '', maxQuestions: 5 });
   const [loading, setLoading] = useState(false);
-  const [created, setCreated] = useState<{ id: string; link: string } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Interview | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   function loadInterviews() {
     fetch('/api/interviews').then(r => r.json()).then(setInterviews).catch(console.error);
   }
-  useEffect(loadInterviews, [created]);
+  useEffect(loadInterviews, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/interviews', {
+      await fetch('/api/interviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, maxQuestions: form.maxQuestions }),
       });
-      const { id } = await res.json();
-      setCreated({ id, link: `${window.location.origin}/interview/${id}` });
-      setForm({ title: '', goal: '', maxQuestions: 8 });
+      setForm({ title: '', goal: '', maxQuestions: 5 });
+      loadInterviews();
     } finally { setLoading(false); }
   }
 
@@ -46,123 +47,245 @@ export default function Home() {
     } finally { setDeleting(null); }
   }
 
-  function copyLink() {
-    if (!created) return;
-    navigator.clipboard.writeText(created.link);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  async function handleEditSave() {
+    if (!editing) return;
+    setEditSaving(true);
+    try {
+      const fields = editing.fields;
+      await fetch(`/api/interviews/${editing.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          intro_message: editing.intro_message,
+          success_message: editing.success_message,
+          fields,
+          max_questions: editing.max_questions,
+        }),
+      });
+      setEditing(null);
+      loadInterviews();
+    } finally { setEditSaving(false); }
+  }
+
+  function toggleField(field: string) {
+    if (!editing) return;
+    const current: string[] = JSON.parse(editing.fields || '["name","email"]');
+    if (field === 'name') return; // always required
+    const next = current.includes(field)
+      ? current.filter(f => f !== field)
+      : [...current, field];
+    setEditing({ ...editing, fields: JSON.stringify(next) });
   }
 
   return (
-    <main style={{ minHeight: '100svh', background: 'var(--bg)' }}>
-      {/* Header */}
-      <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '13px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🎙️</div>
-            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>Interviewr</span>
+    <>
+      <main style={{ minHeight: '100svh', background: 'var(--bg)' }}>
+        {/* Header */}
+        <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)', position: 'sticky', top: 0, zIndex: 10 }}>
+          <div style={{ maxWidth: 560, margin: '0 auto', padding: '13px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>interviewr</span>
+            <a href="/login" style={{ fontSize: 13, color: 'var(--fg-2)', textDecoration: 'none' }}>Logout</a>
           </div>
-          <UserButton afterSignOutUrl="/sign-in" />
-        </div>
-      </header>
+        </header>
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 48px' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 80px' }}>
 
-        {/* Create form */}
-        <div className="animate-fade-up" style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>New interview</h1>
+          {/* Create form */}
+          <div className="animate-fade-up" style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>New interview</h1>
 
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input
-              type="text" required autoFocus
-              placeholder="Name — e.g. Employee benefits survey"
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              style={{ padding: '13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', boxShadow: 'var(--shadow-sm)' }}
-            />
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                type="text" required autoFocus
+                placeholder="Name — e.g. Employee benefits survey"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                style={{ padding: '13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', boxShadow: 'var(--shadow-sm)' }}
+              />
 
-            <div style={{ position: 'relative' }}>
               <textarea
                 required rows={4}
-                placeholder="Objective — what do you want to learn? Type or speak it."
+                placeholder="Objective — what do you want to learn?"
                 value={form.goal}
                 onChange={e => setForm(f => ({ ...f, goal: e.target.value }))}
-                style={{ padding: '13px 50px 13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', resize: 'none', fontFamily: 'inherit', boxShadow: 'var(--shadow-sm)' }}
+                style={{ padding: '13px 15px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--fg)', fontSize: 15, width: '100%', resize: 'none', fontFamily: 'inherit', boxShadow: 'var(--shadow-sm)' }}
               />
-              <div style={{ position: 'absolute', bottom: 10, right: 10 }}>
-                <VoiceButton size="sm" label={false} onTranscript={t => setForm(f => ({ ...f, goal: f.goal ? f.goal + ' ' + t : t }))} />
+
+              <button type="submit" disabled={loading} style={{
+                padding: '14px', borderRadius: 'var(--radius)', border: 'none',
+                background: loading ? 'var(--fg-3)' : 'var(--fg)', color: 'var(--card)',
+                fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                letterSpacing: '-0.01em',
+              }}>
+                {loading ? 'Creating…' : 'Create interview →'}
+              </button>
+            </form>
+          </div>
+
+          {/* Interview list */}
+          {interviews.length > 0 && (
+            <div>
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Your interviews
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {interviews.map((iv, i) => (
+                  <SwipeRow key={iv.id} onDelete={() => handleDelete(iv.id)} deleting={deleting === iv.id} index={i}>
+                    <div style={{ flex: 1, minWidth: 0, padding: '13px 14px' }}>
+                      <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iv.title}</p>
+                      <p style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>Responses: {iv.response_count}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 12px 0 0', flexShrink: 0 }}>
+                      <Link href={`/interview/${iv.id}`} target="_blank"
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none', background: 'var(--card)' }}>
+                        Share ↗
+                      </Link>
+                      <Link href={`/dashboard/${iv.id}`}
+                        style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--fg)', fontSize: 12, fontWeight: 600, color: 'var(--card)', textDecoration: 'none' }}>
+                        Results
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (menuOpen === iv.id) { setMenuOpen(null); setMenuPos(null); }
+                          else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            setMenuOpen(iv.id);
+                          }
+                        }}
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, color: 'var(--fg-2)', background: 'var(--card)', cursor: 'pointer', fontWeight: 700, lineHeight: 1 }}
+                      >
+                        ···
+                      </button>
+                    </div>
+                  </SwipeRow>
+                ))}
               </div>
             </div>
+          )}
 
-            <button type="submit" disabled={loading} style={{
-              padding: '14px', borderRadius: 'var(--radius)', border: 'none',
-              background: loading ? 'var(--fg-3)' : 'var(--accent)', color: 'white',
-              fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: loading ? 'none' : '0 2px 8px rgba(124,92,191,0.35)',
-              letterSpacing: '-0.01em',
-            }}>
-              {loading ? 'Creating…' : 'Create interview →'}
-            </button>
-          </form>
+          {interviews.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--fg-3)' }}>
+              <p style={{ fontSize: 14 }}>No interviews yet. Create your first one above.</p>
+            </div>
+          )}
         </div>
 
-        {/* Created link */}
-        {created && (
-          <div className="animate-fade-up" style={{ marginBottom: 32, padding: 16, background: 'var(--accent-bg)', borderRadius: 'var(--radius-lg)', border: '1.5px solid rgba(124,92,191,0.2)' }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', marginBottom: 10 }}>
-              ✓ Interview created
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <code style={{ flex: 1, fontSize: 12, padding: '8px 10px', background: 'var(--card)', borderRadius: 8, color: 'var(--fg-2)', wordBreak: 'break-all', border: '1px solid var(--border)' }}>
-                {created.link}
-              </code>
-              <button onClick={copyLink} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: 'none', background: copied ? 'var(--green)' : 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                {copied ? '✓ Copied' : 'Copy'}
+        <footer style={{ textAlign: 'center', padding: '16px 20px', background: 'var(--card)', fontSize: 14, color: 'var(--fg-3)' }}>
+          <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--fg-3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 16, filter: 'invert(1) brightness(0.4)' }} />
+          </a>
+        </footer>
+      </main>
+
+      {/* Dropdown menu - rendered at page level to avoid SwipeRow overflow:hidden */}
+      {menuOpen && menuPos && (() => {
+        const iv = interviews.find(i => i.id === menuOpen);
+        if (!iv) return null;
+        return (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => { setMenuOpen(null); setMenuPos(null); }} />
+            <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', zIndex: 50, minWidth: 140, overflow: 'hidden' }}>
+              <button
+                onClick={() => { setMenuOpen(null); setMenuPos(null); setEditing({ ...iv, fields: iv.fields || '["name","email"]' }); }}
+                style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', textAlign: 'left', fontSize: 13, cursor: 'pointer', color: 'var(--fg)' }}
+              >
+                Customize
+              </button>
+              <button
+                onClick={() => { setMenuOpen(null); setMenuPos(null); handleDelete(iv.id); }}
+                style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'none', textAlign: 'left', fontSize: 13, cursor: 'pointer', color: 'var(--red)' }}
+              >
+                Delete
               </button>
             </div>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <Link href={`/dashboard/${created.id}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>View dashboard →</Link>
-              <Link href={`/interview/${created.id}`} target="_blank" style={{ fontSize: 13, color: 'var(--fg-2)', textDecoration: 'none' }}>Preview ↗</Link>
+          </>
+        );
+      })()}
+
+      {/* Edit Modal */}
+      {editing && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div className="animate-fade-up" style={{ width: '100%', maxWidth: 560, background: 'var(--card)', borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0', padding: '24px 20px 40px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700 }}>Edit interview</h2>
+              <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--fg-2)', padding: '4px 8px' }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Intro message */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Intro message
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Hi! This is a quick 2-minute survey about your experience."
+                  value={editing.intro_message}
+                  onChange={e => setEditing({ ...editing, intro_message: e.target.value })}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontSize: 14, resize: 'none', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>Leave blank to use the default message.</p>
+              </div>
+
+              {/* Fields to collect */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Fields to collect
+                </label>
+                {[
+                  { key: 'name', label: 'Name', required: true },
+                  { key: 'email', label: 'Email', required: false },
+                  { key: 'phone', label: 'Phone', required: false },
+                ].map(({ key, label, required }) => {
+                  const currentFields: string[] = JSON.parse(editing.fields || '["name","email"]');
+                  const checked = currentFields.includes(key);
+                  return (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', cursor: required ? 'default' : 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={required}
+                        onChange={() => toggleField(key)}
+                        style={{ width: 16, height: 16, accentColor: 'var(--fg)' }}
+                      />
+                      <span style={{ fontSize: 14, color: 'var(--fg)' }}>{label}</span>
+                      {required && <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>(always required)</span>}
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Success message */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Success message
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Thanks, {name}! We'll be in touch soon."
+                  value={editing.success_message}
+                  onChange={e => setEditing({ ...editing, success_message: e.target.value })}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontSize: 14, resize: 'none', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>Use {'{name}'} to personalise. Leave blank for default.</p>
+              </div>
+
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving}
+                style={{ padding: '14px', borderRadius: 'var(--radius)', border: 'none', background: editSaving ? 'var(--fg-3)' : 'var(--fg)', color: 'var(--card)', fontSize: 15, fontWeight: 600, cursor: editSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {editSaving ? 'Saving…' : 'Save changes'}
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Interview list */}
-        {interviews.length > 0 && (
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
-              Your interviews
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {interviews.map((iv, i) => (
-                <SwipeRow key={iv.id} onDelete={() => handleDelete(iv.id)} deleting={deleting === iv.id} index={i}>
-                  <div style={{ flex: 1, minWidth: 0, padding: '13px 14px' }}>
-                    <p style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iv.title}</p>
-                    <p style={{ fontSize: 12, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{iv.goal}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 12px 0 0', flexShrink: 0 }}>
-                    <Link href={`/interview/${iv.id}`} target="_blank"
-                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none', background: 'var(--card)' }}>
-                      Share ↗
-                    </Link>
-                    <Link href={`/dashboard/${iv.id}`}
-                      style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--accent)', fontSize: 12, fontWeight: 600, color: 'white', textDecoration: 'none' }}>
-                      Results
-                    </Link>
-                  </div>
-                </SwipeRow>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {interviews.length === 0 && !created && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--fg-3)' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🎙️</div>
-            <p style={{ fontSize: 14 }}>No interviews yet. Create your first one above.</p>
-          </div>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -28,8 +28,7 @@ function LoginForm() {
     <main style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div className="animate-fade-up" style={{ width: '100%', maxWidth: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🎙️</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>Interviewr</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>interviewr</h1>
           <p style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 4 }}>Admin access</p>
         </div>
 
