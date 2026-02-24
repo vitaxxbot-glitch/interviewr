@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { UserButton } from '@clerk/nextjs';
 
 const VoiceButton = dynamic(() => import('@/components/VoiceButton'), { ssr: false });
 
@@ -61,7 +60,7 @@ export default function Home() {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🎙️</div>
             <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>Interviewr</span>
           </div>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <a href="/login" style={{ fontSize: 13, color: 'var(--fg-2)', textDecoration: 'none' }}>Logout</a>
         </div>
       </header>
 

@@ -1,24 +1,34 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Public routes — no auth needed (interviewees + health)
-const isPublicRoute = createRouteMatcher([
-  '/interview(.*)',
-  '/api/interviews/:id(.*)',   // all interview API calls (GET, POST, chat)
-  '/api/transcribe(.*)',
-  '/api/health(.*)',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-]);
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'interviewr';
+const COOKIE = 'interviewr_auth';
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+// Routes that require admin auth
+const ADMIN_ROUTES = ['/', '/dashboard'];
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Only protect admin routes (not /interview/* or /api/interviews/*/chat)
+  const isAdminRoute = pathname === '/' || pathname.startsWith('/dashboard');
+  const isAdminApi = pathname.startsWith('/api/interviews') && !pathname.includes('/chat') && req.method !== 'GET';
+
+  if (!isAdminRoute && !isAdminApi) return NextResponse.next();
+
+  // Allow login page
+  if (pathname === '/login') return NextResponse.next();
+
+  // Check cookie
+  const token = req.cookies.get(COOKIE)?.value;
+  if (token === ADMIN_PASS) return NextResponse.next();
+
+  // Redirect to login
+  const loginUrl = new URL('/login', req.url);
+  loginUrl.searchParams.set('next', pathname);
+  return NextResponse.redirect(loginUrl);
+}
 
 export const config = {
-  matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
-  ],
+  matcher: ['/', '/dashboard/:path*', '/api/interviews/:path*/route'],
 };
