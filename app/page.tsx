@@ -81,10 +81,7 @@ export default function Home() {
         {/* Header */}
         <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)', position: 'sticky', top: 0, zIndex: 10 }}>
           <div style={{ maxWidth: 560, margin: '0 auto', padding: '13px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🎙️</div>
-              <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>Interviewr</span>
-            </div>
+            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>interviewr</span>
             <a href="/login" style={{ fontSize: 13, color: 'var(--fg-2)', textDecoration: 'none' }}>Logout</a>
           </div>
         </header>
@@ -181,7 +178,6 @@ export default function Home() {
 
           {interviews.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--fg-3)' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🎙️</div>
               <p style={{ fontSize: 14 }}>No interviews yet. Create your first one above.</p>
             </div>
           )}

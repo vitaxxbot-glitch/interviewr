@@ -127,9 +127,6 @@ export default function InterviewPage({ params }: { params: Params }) {
       <div className="animate-fade-up" style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
 
         <div style={{ marginBottom: 28 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 18 }}>
-            🎙️
-          </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.02em', marginBottom: 8 }}>
             {interview.title}
           </h1>
