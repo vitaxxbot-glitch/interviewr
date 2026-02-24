@@ -188,7 +188,7 @@ export default function InterviewPage({ params }: { params: Params }) {
       </div>
 
       <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 40 }}>
-        Powered by The Agile Monkeys
+        Una iniciativa de The Agile Monkeys
       </p>
     </main>
   );
@@ -217,7 +217,7 @@ export default function InterviewPage({ params }: { params: Params }) {
           </p>
         </div>
         <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 48 }}>
-          Powered by The Agile Monkeys
+          Una iniciativa de The Agile Monkeys
         </p>
       </main>
     );
@@ -312,7 +312,7 @@ export default function InterviewPage({ params }: { params: Params }) {
           </button>
         </form>
         <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 8 }}>
-          Powered by The Agile Monkeys
+          Una iniciativa de The Agile Monkeys
         </p>
       </div>
     </main>

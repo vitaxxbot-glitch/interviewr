@@ -188,7 +188,7 @@ export default function Home() {
         </div>
 
         <footer style={{ textAlign: 'center', padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--card)', fontSize: 12, color: 'var(--fg-3)' }}>
-          Powered by The Agile Monkeys
+          Una iniciativa de The Agile Monkeys
         </footer>
       </main>
 
