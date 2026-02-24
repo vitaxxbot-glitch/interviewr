@@ -24,6 +24,11 @@ export default function DashboardPage({ params }: { params: Params }) {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
+  const [goalExpanded, setGoalExpanded] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState('');
+  const [savingGoal, setSavingGoal] = useState(false);
 
   const fetchData = useCallback(async (withSummary = false) => {
     const url = withSummary ? `/api/dashboard/${id}?summary=1` : `/api/dashboard/${id}`;
@@ -35,7 +40,6 @@ export default function DashboardPage({ params }: { params: Params }) {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 15s
     const interval = setInterval(() => fetchData(), 15000);
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -58,19 +62,44 @@ export default function DashboardPage({ params }: { params: Params }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function copySummary() {
+    if (!data?.summary) return;
+    navigator.clipboard.writeText(data.summary);
+    setSummaryCopied(true);
+    setTimeout(() => setSummaryCopied(false), 2000);
+  }
+
+  async function saveGoal() {
+    if (!data) return;
+    setSavingGoal(true);
+    try {
+      await fetch(`/api/interviews/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: goalDraft }),
+      });
+      setData(d => d ? { ...d, interview: { ...d.interview, goal: goalDraft } } : d);
+      setEditingGoal(false);
+    } finally {
+      setSavingGoal(false);
+    }
+  }
+
   if (!data) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--accent)', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 12 }}>
+        <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--fg)', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+        <p style={{ fontSize: 14, color: 'var(--fg-2)' }}>Loading…</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   const { interview, sessions, totalResponses, completedResponses } = data;
+  const goalIsLong = interview.goal.length > 120;
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <main style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
       <header style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
@@ -79,13 +108,57 @@ export default function DashboardPage({ params }: { params: Params }) {
             ← All interviews
           </Link>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--fg)' }}>{interview.title}</h1>
-              <p style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 3, maxWidth: 500 }}>{interview.goal}</p>
+
+              {/* Collapsible goal */}
+              {editingGoal ? (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    value={goalDraft}
+                    onChange={e => setGoalDraft(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontSize: 13, resize: 'none', fontFamily: 'inherit' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={saveGoal} disabled={savingGoal} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--fg)', color: 'var(--card)', fontSize: 13, fontWeight: 600, cursor: savingGoal ? 'not-allowed' : 'pointer' }}>
+                      {savingGoal ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingGoal(false)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-2)', fontSize: 13, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 3 }}>
+                  <p style={{ fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.55, maxWidth: 500 }}>
+                    {goalIsLong && !goalExpanded
+                      ? interview.goal.slice(0, 120) + '…'
+                      : interview.goal}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
+                    {goalIsLong && (
+                      <button
+                        onClick={() => setGoalExpanded(v => !v)}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--fg-3)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        {goalExpanded ? 'Show less' : 'Show more'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setGoalDraft(interview.goal); setEditingGoal(true); }}
+                      style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--fg-3)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <button onClick={copyLink} style={{
               flexShrink: 0, padding: '8px 16px', borderRadius: 'var(--radius)', border: 'none',
-              background: copied ? 'var(--green)' : 'var(--accent)', color: 'white',
+              background: copied ? 'var(--green)' : 'var(--fg)', color: 'var(--card)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}>
               {copied ? '✓ Copied' : 'Share link'}
@@ -94,7 +167,7 @@ export default function DashboardPage({ params }: { params: Params }) {
         </div>
       </header>
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: 32, flex: 1 }}>
 
         {/* Stats */}
         <div className="animate-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
@@ -122,32 +195,46 @@ export default function DashboardPage({ params }: { params: Params }) {
         <section className="animate-fade-up stagger-1">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--fg)' }}>AI Summary</h2>
-            {data.summary ? (
-              <button
-                onClick={() => handleSummary(true)}
-                disabled={loadingSummary || completedResponses === 0}
-                style={{
-                  padding: '7px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)',
-                  background: 'var(--card)', color: 'var(--fg-2)', fontSize: 13, fontWeight: 500,
-                  cursor: loadingSummary ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loadingSummary ? 'Regenerating…' : '↺ Regenerate'}
-              </button>
-            ) : (
-              <button
-                onClick={() => handleSummary()}
-                disabled={loadingSummary || completedResponses === 0}
-                style={{
-                  padding: '7px 16px', borderRadius: 'var(--radius)', border: 'none',
-                  background: (loadingSummary || completedResponses === 0) ? 'var(--fg-3)' : 'var(--accent)',
-                  color: 'white', fontSize: 13, fontWeight: 600,
-                  cursor: (loadingSummary || completedResponses === 0) ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loadingSummary ? 'Generating…' : 'Generate'}
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {data.summary && (
+                <button
+                  onClick={copySummary}
+                  style={{
+                    padding: '7px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                    background: summaryCopied ? 'var(--green)' : 'var(--card)', color: summaryCopied ? 'white' : 'var(--fg-2)',
+                    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  }}
+                >
+                  {summaryCopied ? '✓ Copied' : 'Copy'}
+                </button>
+              )}
+              {data.summary ? (
+                <button
+                  onClick={() => handleSummary(true)}
+                  disabled={loadingSummary || completedResponses === 0}
+                  style={{
+                    padding: '7px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                    background: 'var(--card)', color: 'var(--fg-2)', fontSize: 13, fontWeight: 500,
+                    cursor: loadingSummary ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loadingSummary ? 'Regenerating…' : '↺ Regenerate'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSummary()}
+                  disabled={loadingSummary || completedResponses === 0}
+                  style={{
+                    padding: '7px 16px', borderRadius: 'var(--radius)', border: 'none',
+                    background: (loadingSummary || completedResponses === 0) ? 'var(--fg-3)' : 'var(--fg)',
+                    color: 'var(--card)', fontSize: 13, fontWeight: 600,
+                    cursor: (loadingSummary || completedResponses === 0) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loadingSummary ? 'Generating…' : 'Generate'}
+                </button>
+              )}
+            </div>
           </div>
 
           {completedResponses === 0 ? (
@@ -160,6 +247,14 @@ export default function DashboardPage({ params }: { params: Params }) {
               <span style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
                 The summary will appear here once people complete the interview.
               </span>
+            </div>
+          ) : loadingSummary ? (
+            <div style={{
+              padding: 32, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)',
+              background: 'var(--card)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--fg)', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+              <p style={{ fontSize: 13, color: 'var(--fg-2)' }}>Generating AI summary…</p>
             </div>
           ) : data.summary ? (
             <div style={{
@@ -202,7 +297,7 @@ export default function DashboardPage({ params }: { params: Params }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                       <div style={{
                         width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                        background: 'var(--accent-bg)', color: 'var(--accent)',
+                        background: 'var(--bg-2)', color: 'var(--fg-2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 14, fontWeight: 700,
                       }}>
@@ -216,8 +311,8 @@ export default function DashboardPage({ params }: { params: Params }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                       <span style={{
                         fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, letterSpacing: '0.02em',
-                        background: session.completed ? 'var(--green-bg)' : 'var(--amber-bg)',
-                        color: session.completed ? 'var(--green)' : 'var(--amber)',
+                        background: session.completed ? 'var(--green-bg)' : 'var(--bg-2)',
+                        color: session.completed ? 'var(--green)' : 'var(--fg-2)',
                       }}>
                         {session.completed ? 'Complete' : 'In progress'}
                       </span>
@@ -234,8 +329,8 @@ export default function DashboardPage({ params }: { params: Params }) {
                           <div style={{
                             maxWidth: '85%', padding: '9px 14px', fontSize: 13, lineHeight: 1.55,
                             borderRadius: msg.role === 'user' ? '14px 14px 3px 14px' : '3px 14px 14px 14px',
-                            background: msg.role === 'user' ? 'var(--accent-bg)' : 'var(--bg-2)',
-                            color: msg.role === 'user' ? 'var(--accent)' : 'var(--fg)',
+                            background: msg.role === 'user' ? 'var(--bg-2)' : 'var(--bg)',
+                            color: 'var(--fg)',
                             border: '1px solid var(--border)',
                           }}>
                             {msg.content}
@@ -250,6 +345,10 @@ export default function DashboardPage({ params }: { params: Params }) {
           </section>
         )}
       </div>
+
+      <footer style={{ textAlign: 'center', padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--card)', fontSize: 12, color: 'var(--fg-3)' }}>
+        Powered by The Agile Monkeys
+      </footer>
     </main>
   );
 }
@@ -264,10 +363,9 @@ function MarkdownContent({ content }: { content: string }) {
           return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: 'var(--fg)', marginTop: 16 }}>{line.slice(2)}</h2>;
         if (line.startsWith('- ') || line.startsWith('* '))
           return <p key={i} style={{ fontSize: 13, color: 'var(--fg)', paddingLeft: 16, lineHeight: 1.6 }}>
-            <span style={{ color: 'var(--accent)', marginRight: 8 }}>·</span>{line.slice(2)}
+            <span style={{ marginRight: 8 }}>·</span>{line.slice(2)}
           </p>;
         if (line.trim() === '') return <div key={i} style={{ height: 4 }} />;
-        // Bold inline
         const parts = line.split(/(\*\*[^*]+\*\*)/g);
         return (
           <p key={i} style={{ fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.65 }}>

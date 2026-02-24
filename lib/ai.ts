@@ -87,6 +87,28 @@ ${isFirst ? `Opening: greet ${intervieweeName} by name in one short sentence, th
   }
 }
 
+export async function generateSuggestions(
+  goal: string,
+  question: string,
+): Promise<string[]> {
+  const prompt = `Interview goal: "${goal}"
+The interviewer just asked: "${question}"
+
+Generate 3 very short suggested answers a participant might give (max 5 words each).
+Return ONLY the 3 answers, one per line, no numbering, no bullets, no extra text.`;
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 80,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    return text.split('\n').map(l => l.trim()).filter(l => l.length > 0).slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
 export async function generateSummary(
   goal: string,
   allMessages: { name: string; email: string; role: string; content: string }[]

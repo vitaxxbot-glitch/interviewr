@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { getInterview, getSession, getMessages, addMessage, completeSession } from '@/lib/db';
-import { getInterviewerResponse } from '@/lib/ai';
+import { getInterviewerResponse, generateSuggestions } from '@/lib/ai';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -36,11 +36,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const isComplete = reply.includes('INTERVIEW_COMPLETE');
     if (isComplete) completeSession(sessionId);
 
+    const cleanReply = reply.replace('INTERVIEW_COMPLETE', '').trim();
+    const suggestions = isComplete ? [] : await generateSuggestions(interview.goal, cleanReply);
+
     return NextResponse.json({
-      reply: reply.replace('INTERVIEW_COMPLETE', '').trim(),
+      reply: cleanReply,
       isComplete,
       questionCount: questionCount + (isFirst ? 0 : 1),
       maxQuestions: maxQ,
+      suggestions,
     });
   } catch (e: unknown) {
     console.error(e);
