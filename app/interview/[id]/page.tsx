@@ -179,9 +179,6 @@ export default function InterviewPage({ params }: { params: Params }) {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--fg-3)', marginTop: 14, lineHeight: 1.5 }}>
-          Your answers go directly to the team.
-        </p>
       </div>
 
       <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--fg-3)', marginTop: 40, textDecoration: 'none' }}>
