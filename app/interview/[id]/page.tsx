@@ -187,9 +187,9 @@ export default function InterviewPage({ params }: { params: Params }) {
         </p>
       </div>
 
-      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 40 }}>
-        Una iniciativa de The Agile Monkeys
-      </p>
+      <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--fg-3)', marginTop: 40, textDecoration: 'none' }}>
+        Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 12, filter: 'invert(1) brightness(0.4)' }} />
+      </a>
     </main>
   );
 
@@ -216,9 +216,9 @@ export default function InterviewPage({ params }: { params: Params }) {
             {successMsg}
           </p>
         </div>
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 48 }}>
-          Una iniciativa de The Agile Monkeys
-        </p>
+        <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--fg-3)', marginTop: 48, textDecoration: 'none' }}>
+          Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 12, filter: 'invert(1) brightness(0.4)' }} />
+        </a>
       </main>
     );
   }
@@ -311,9 +311,9 @@ export default function InterviewPage({ params }: { params: Params }) {
             ↑
           </button>
         </form>
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fg-3)', marginTop: 8 }}>
-          Una iniciativa de The Agile Monkeys
-        </p>
+        <a href="https://www.theagilemonkeys.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--fg-3)', marginTop: 8, textDecoration: 'none' }}>
+          Powered by <img src="/tam-logo.svg" alt="The Agile Monkeys" style={{ height: 12, filter: 'invert(1) brightness(0.4)' }} />
+        </a>
       </div>
     </main>
   );
